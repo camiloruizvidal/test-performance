@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Persona } from './entities/person.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { PersonaModel } from './models/personaModel';
 
 @Injectable()
 export class AppService {
@@ -10,14 +11,62 @@ export class AppService {
     private readonly personaRepository: Repository<Persona>,
   ) {}
 
-  public async testTypeOrm(totalRecords: number = 1000000) {
-    const persons: Persona[] = this.generateJson(totalRecords);
-    const executionTime1: any = await this.testTypeOrmRepository(persons);
-    const executionTime2: any = await this.testTypeOrmLoop(persons);
-    return (
-      `Tiempo de ejecución1 loop: ${executionTime1} milisegundos en insertar ${totalRecords} registros.` +
-      `Tiempo de ejecución2 repository: ${executionTime2} milisegundos en insertar ${totalRecords} registros.`
-    );
+  public async testTypeOrmVSequelize(totalRecords: number = 1000000) {
+    let process = '';
+    try {
+      process = 'timeTypeOrmLoop';
+      const timeTypeOrmLoop: any = await this.testTypeOrmLoop(
+        this.generateJson(totalRecords),
+      );
+      process = 'timeTypeOrmLoop2';
+      const timeTypeOrmLoop2: any = await this.testTypeOrmLoop2(
+        this.generateJson(totalRecords),
+      );
+      process = 'timeTypeOrmRepository';
+      const timeTypeOrmRepository: any = await this.testTypeOrmRepository(
+        this.generateJson(totalRecords),
+      );
+
+      process = 'timeSequelizeBulkCreate';
+      const timeSequelizeBulkCreate = await this.testSequelizeBulkCreate(
+        this.generateJson(totalRecords),
+      );
+      process = 'timeSequelizeLoop';
+      const timeSequelizeLoop = await this.testSequelizeLoop(
+        this.generateJson(totalRecords),
+      );
+      process = 'timeSequelizeLoop2';
+      const timeSequelizeLoop2 = await this.testSequelizeLoop2(
+        this.generateJson(totalRecords),
+      );
+
+      return {
+        typeOrm: [
+          {
+            saveAll: `Tiempo de ejecución1 repository: ${timeTypeOrmRepository} milisegundos en insertar ${totalRecords} registros.`,
+          },
+          {
+            loop: `Tiempo de ejecución2 loop: ${timeTypeOrmLoop} milisegundos en insertar ${totalRecords} registros.`,
+          },
+          {
+            loop2: `Tiempo de ejecución3 loop2: ${timeTypeOrmLoop2} milisegundos en insertar ${totalRecords} registros.`,
+          },
+        ],
+        sequelize: [
+          {
+            bulkCreate: `Tiempo de ejecución1 repository: ${timeSequelizeBulkCreate} milisegundos en insertar ${totalRecords} registros.`,
+          },
+          {
+            loop: `Tiempo de ejecución2 loop: ${timeSequelizeLoop} milisegundos en insertar ${totalRecords} registros.`,
+          },
+          {
+            loop2: `Tiempo de ejecución3 loop2: ${timeSequelizeLoop2} milisegundos en insertar ${totalRecords} registros.`,
+          },
+        ],
+      };
+    } catch (error) {
+      return { process, error };
+    }
   }
 
   private async testTypeOrmRepository(persons: Persona[]) {
@@ -36,41 +85,53 @@ export class AppService {
     return endTime - startTime;
   }
 
-  public async testSequelize(totalRecords: number = 1000000) {
-    const persons: Persona[] = this.generateJson(totalRecords);
+  private async testTypeOrmLoop2(persons: Persona[]): Promise<number> {
     const startTime: any = new Date();
-
+    const savePromises = persons.map((person) =>
+      this.personaRepository.save(person),
+    );
+    await Promise.all(savePromises);
     const endTime: any = new Date();
-    const executionTime: any = endTime - startTime;
 
-    return `Tiempo de ejecución: ${executionTime} milisegundos`;
+    return endTime - startTime;
   }
 
-  private generateJson(
-    totalRecords: number = 1000000,
-    start: number = 0,
-  ): Persona[] {
-    const records = [];
+  private async testSequelizeBulkCreate(persons: any[]): Promise<number> {
+    const startTime: any = new Date();
+    //throw JSON.stringify(persons);
+    await PersonaModel.bulkCreate(persons);
+    const endTime: any = new Date();
+    return endTime - startTime;
+  }
 
-    for (let i = 1; i <= start + totalRecords; i++) {
-      records.push(this.generateRandomPersona(i));
+  private async testSequelizeLoop(persons: any[]): Promise<number> {
+    const startTime: any = new Date();
+    for (const person of persons) {
+      await PersonaModel.create(person);
+    }
+    const endTime: any = new Date();
+    return endTime - startTime;
+  }
+
+  private async testSequelizeLoop2(persons: any[]): Promise<number> {
+    const startTime: any = new Date();
+    const createPromises = persons.map((person) => PersonaModel.create(person));
+    await Promise.all(createPromises);
+    const endTime: any = new Date();
+    return endTime - startTime;
+  }
+
+  private generateJson(totalRecords: number = 1000000): Persona[] {
+    const records = [];
+    for (let i = 1; i <= totalRecords; i++) {
+      records.push({
+        nombre: this.generateRandomName(),
+        apellido: this.generateRandomName(),
+        id_tipo_documento: 1,
+        numero_documento: i,
+      });
     }
     return records;
-  }
-
-  private generateRandomPersona(id) {
-    const nombre = this.generateRandomName();
-    const apellido = this.generateRandomName();
-    const id_tipo_documento = 1;
-    const numero_documento = id; //((id - 1) % 100000) + 1;
-
-    return {
-      id,
-      nombre,
-      apellido,
-      id_tipo_documento,
-      numero_documento,
-    };
   }
 
   private generateRandomName() {

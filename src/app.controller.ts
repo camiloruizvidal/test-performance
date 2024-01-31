@@ -5,13 +5,8 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private appService: AppService) {}
 
-  @Get('testTypeOrm')
-  async testTypeOrm() {
-    return await { testTypeOrm: await this.appService.testTypeOrm(1000) };
-  }
-
-  @Get('testSequelize')
-  async testSequelize() {
-    return await this.appService.testSequelize(10000);
+  @Get('testTypeOrmVSequelize')
+  async testTypeOrmVSequelize() {
+    return await this.appService.testTypeOrmVSequelize(1000);
   }
 }
