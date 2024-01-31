@@ -12,30 +12,27 @@ export class AppService {
   ) {}
 
   public async testTypeOrmVSequelize(totalRecords: number = 1000000) {
-    let process = '';
     try {
-      process = 'timeTypeOrmLoop';
       const timeTypeOrmLoop: any = await this.testTypeOrmLoop(
         this.generateJson(totalRecords),
       );
-      process = 'timeTypeOrmLoop2';
+
       const timeTypeOrmLoop2: any = await this.testTypeOrmLoop2(
         this.generateJson(totalRecords),
       );
-      process = 'timeTypeOrmRepository';
+
       const timeTypeOrmRepository: any = await this.testTypeOrmRepository(
         this.generateJson(totalRecords),
       );
 
-      process = 'timeSequelizeBulkCreate';
       const timeSequelizeBulkCreate = await this.testSequelizeBulkCreate(
         this.generateJson(totalRecords),
       );
-      process = 'timeSequelizeLoop';
+
       const timeSequelizeLoop = await this.testSequelizeLoop(
         this.generateJson(totalRecords),
       );
-      process = 'timeSequelizeLoop2';
+
       const timeSequelizeLoop2 = await this.testSequelizeLoop2(
         this.generateJson(totalRecords),
       );
@@ -43,24 +40,30 @@ export class AppService {
       return {
         typeOrm: [
           {
-            saveAll: `Tiempo de ejecución1 repository: ${timeTypeOrmRepository} milisegundos en insertar ${totalRecords} registros.`,
+            saveAll: `Tiempo de ejecución1 repository: ${timeTypeOrmRepository.time} milisegundos en insertar ${totalRecords} registros.`,
+            control: timeTypeOrmRepository,
           },
           {
-            loop: `Tiempo de ejecución2 loop: ${timeTypeOrmLoop} milisegundos en insertar ${totalRecords} registros.`,
+            loop: `Tiempo de ejecución2 loop: ${timeTypeOrmLoop.time} milisegundos en insertar ${totalRecords} registros.`,
+            control: timeTypeOrmLoop,
           },
           {
-            loop2: `Tiempo de ejecución3 loop2: ${timeTypeOrmLoop2} milisegundos en insertar ${totalRecords} registros.`,
+            loop2: `Tiempo de ejecución3 loop2: ${timeTypeOrmLoop2.time} milisegundos en insertar ${totalRecords} registros.`,
+            control: timeTypeOrmLoop2,
           },
         ],
         sequelize: [
           {
-            bulkCreate: `Tiempo de ejecución1 repository: ${timeSequelizeBulkCreate} milisegundos en insertar ${totalRecords} registros.`,
+            bulkCreate: `Tiempo de ejecución1 repository: ${timeSequelizeBulkCreate.time} milisegundos en insertar ${totalRecords} registros.`,
+            control: timeSequelizeBulkCreate,
           },
           {
-            loop: `Tiempo de ejecución2 loop: ${timeSequelizeLoop} milisegundos en insertar ${totalRecords} registros.`,
+            loop: `Tiempo de ejecución2 loop: ${timeSequelizeLoop.time} milisegundos en insertar ${totalRecords} registros.`,
+            control: timeSequelizeLoop,
           },
           {
-            loop2: `Tiempo de ejecución3 loop2: ${timeSequelizeLoop2} milisegundos en insertar ${totalRecords} registros.`,
+            loop2: `Tiempo de ejecución3 loop2: ${timeSequelizeLoop2.time} milisegundos en insertar ${totalRecords} registros.`,
+            control: timeSequelizeLoop2,
           },
         ],
       };
@@ -70,55 +73,107 @@ export class AppService {
   }
 
   private async testTypeOrmRepository(persons: Persona[]) {
+    const usageBefore = process.memoryUsage();
+    const cpuBefore = process.cpuUsage();
     const startTime: any = new Date();
     await this.personaRepository.save(persons);
     const endTime: any = new Date();
-    return endTime - startTime;
+    const usageAfter = process.memoryUsage();
+    const cpuAfter = process.cpuUsage(cpuBefore);
+    return {
+      time: endTime - startTime,
+      memoryUsageBefore: usageBefore,
+      memoryUsageAfter: usageAfter,
+      cpuUsage: cpuAfter,
+    };
   }
 
   private async testTypeOrmLoop(persons: Persona[]) {
+    const usageBefore = process.memoryUsage();
+    const cpuBefore = process.cpuUsage();
     const startTime: any = new Date();
     for (const [index, person] of persons.entries()) {
       await this.personaRepository.save(person);
     }
     const endTime: any = new Date();
-    return endTime - startTime;
+    const usageAfter = process.memoryUsage();
+    const cpuAfter = process.cpuUsage(cpuBefore);
+    return {
+      time: endTime - startTime,
+      memoryUsageBefore: usageBefore,
+      memoryUsageAfter: usageAfter,
+      cpuUsage: cpuAfter,
+    };
   }
 
-  private async testTypeOrmLoop2(persons: Persona[]): Promise<number> {
+  private async testTypeOrmLoop2(persons: Persona[]) {
+    const usageBefore = process.memoryUsage();
+    const cpuBefore = process.cpuUsage();
     const startTime: any = new Date();
     const savePromises = persons.map((person) =>
       this.personaRepository.save(person),
     );
     await Promise.all(savePromises);
     const endTime: any = new Date();
-
-    return endTime - startTime;
+    const usageAfter = process.memoryUsage();
+    const cpuAfter = process.cpuUsage(cpuBefore);
+    return {
+      time: endTime - startTime,
+      memoryUsageBefore: usageBefore,
+      memoryUsageAfter: usageAfter,
+      cpuUsage: cpuAfter,
+    };
   }
 
-  private async testSequelizeBulkCreate(persons: any[]): Promise<number> {
+  private async testSequelizeBulkCreate(persons: any[]) {
+    const usageBefore = process.memoryUsage();
+    const cpuBefore = process.cpuUsage();
     const startTime: any = new Date();
-    //throw JSON.stringify(persons);
     await PersonaModel.bulkCreate(persons);
     const endTime: any = new Date();
-    return endTime - startTime;
+    const usageAfter = process.memoryUsage();
+    const cpuAfter = process.cpuUsage(cpuBefore);
+    return {
+      time: endTime - startTime,
+      memoryUsageBefore: usageBefore,
+      memoryUsageAfter: usageAfter,
+      cpuUsage: cpuAfter,
+    };
   }
 
-  private async testSequelizeLoop(persons: any[]): Promise<number> {
+  private async testSequelizeLoop(persons: any[]) {
+    const usageBefore = process.memoryUsage();
+    const cpuBefore = process.cpuUsage();
     const startTime: any = new Date();
     for (const person of persons) {
       await PersonaModel.create(person);
     }
     const endTime: any = new Date();
-    return endTime - startTime;
+    const usageAfter = process.memoryUsage();
+    const cpuAfter = process.cpuUsage(cpuBefore);
+    return {
+      time: endTime - startTime,
+      memoryUsageBefore: usageBefore,
+      memoryUsageAfter: usageAfter,
+      cpuUsage: cpuAfter,
+    };
   }
 
-  private async testSequelizeLoop2(persons: any[]): Promise<number> {
+  private async testSequelizeLoop2(persons: any[]) {
+    const usageBefore = process.memoryUsage();
+    const cpuBefore = process.cpuUsage();
     const startTime: any = new Date();
     const createPromises = persons.map((person) => PersonaModel.create(person));
     await Promise.all(createPromises);
     const endTime: any = new Date();
-    return endTime - startTime;
+    const usageAfter = process.memoryUsage();
+    const cpuAfter = process.cpuUsage(cpuBefore);
+    return {
+      time: endTime - startTime,
+      memoryUsageBefore: usageBefore,
+      memoryUsageAfter: usageAfter,
+      cpuUsage: cpuAfter,
+    };
   }
 
   private generateJson(totalRecords: number = 1000000): Persona[] {

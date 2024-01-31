@@ -7,6 +7,6 @@ export class AppController {
 
   @Get('testTypeOrmVSequelize')
   async testTypeOrmVSequelize() {
-    return await this.appService.testTypeOrmVSequelize(1000);
+    return await this.appService.testTypeOrmVSequelize(10000);
   }
 }
