@@ -3,6 +3,8 @@ import { Repository } from 'typeorm';
 import { Persona } from './entities/person.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PersonaModel } from './models/personaModel';
+import { PersonaRepository } from './reposities/persona.repository';
+import { CarroModel } from './models/carroModel';
 
 @Injectable()
 export class AppService {
@@ -11,16 +13,10 @@ export class AppService {
     private readonly personaRepository: Repository<Persona>,
   ) {}
 
-  public async testTypeOrmVSequelize(totalRecords: number = 1000000) {
+  public async testTypeOrmVSequelize(
+    totalRecords: number = 1000000,
+  ): Promise<string> {
     try {
-      const timeTypeOrmLoop: any = await this.testTypeOrmLoop(
-        this.generateJson(totalRecords),
-      );
-
-      const timeTypeOrmLoop2: any = await this.testTypeOrmLoop2(
-        this.generateJson(totalRecords),
-      );
-
       const timeTypeOrmRepository: any = await this.testTypeOrmRepository(
         this.generateJson(totalRecords),
       );
@@ -29,47 +25,60 @@ export class AppService {
         this.generateJson(totalRecords),
       );
 
-      const timeSequelizeLoop = await this.testSequelizeLoop(
-        this.generateJson(totalRecords),
-      );
-
-      const timeSequelizeLoop2 = await this.testSequelizeLoop2(
-        this.generateJson(totalRecords),
-      );
-
-      return {
-        typeOrm: [
-          {
-            saveAll: `Tiempo de ejecución1 repository: ${timeTypeOrmRepository.time} milisegundos en insertar ${totalRecords} registros.`,
-            control: timeTypeOrmRepository,
-          },
-          {
-            loop: `Tiempo de ejecución2 loop: ${timeTypeOrmLoop.time} milisegundos en insertar ${totalRecords} registros.`,
-            control: timeTypeOrmLoop,
-          },
-          {
-            loop2: `Tiempo de ejecución3 loop2: ${timeTypeOrmLoop2.time} milisegundos en insertar ${totalRecords} registros.`,
-            control: timeTypeOrmLoop2,
-          },
-        ],
-        sequelize: [
-          {
-            bulkCreate: `Tiempo de ejecución1 repository: ${timeSequelizeBulkCreate.time} milisegundos en insertar ${totalRecords} registros.`,
-            control: timeSequelizeBulkCreate,
-          },
-          {
-            loop: `Tiempo de ejecución2 loop: ${timeSequelizeLoop.time} milisegundos en insertar ${totalRecords} registros.`,
-            control: timeSequelizeLoop,
-          },
-          {
-            loop2: `Tiempo de ejecución3 loop2: ${timeSequelizeLoop2.time} milisegundos en insertar ${totalRecords} registros.`,
-            control: timeSequelizeLoop2,
-          },
-        ],
+      const result = {
+        typeOrm: {
+          timems: timeTypeOrmRepository.time,
+          memory: this.setControl(timeTypeOrmRepository),
+          records: totalRecords,
+        },
+        sequelize: {
+          bulkCreate: `Tiempo de ejecución1 repository: ${timeSequelizeBulkCreate.time} milisegundos en insertar ${totalRecords} registros.`,
+          timems: timeSequelizeBulkCreate.time,
+          memory: this.setControl(timeTypeOrmRepository),
+          records: totalRecords,
+        },
       };
+      const html = `
+      <tr>
+        <td></td>
+        <td>TypeORM</td>
+        <td>Sequelize</td>
+      </tr>
+      <tr>
+        <td>Cantidad de Registros</td>
+        <td>${totalRecords.toLocaleString()}</td>
+        <td>${totalRecords.toLocaleString()}</td>
+      </tr>
+      <tr>
+        <td>T° Milisegundos</td>
+        <td>${result.typeOrm.timems.toLocaleString()}</td>
+        <td>${result.sequelize.timems.toLocaleString()}</td>
+      </tr>
+      <tr>
+        <td>Uso de Memoria antes</td>
+        <td>${result.typeOrm.memory.antes.toLocaleString()}</td>
+        <td>${result.sequelize.memory.antes.toLocaleString()}</td>
+      </tr>
+      <tr>
+        <td>Uso de Memoria después</td>
+        <td>${result.typeOrm.memory.despues.toLocaleString()}</td>
+        <td>${result.sequelize.memory.despues.toLocaleString()}</td>
+      </tr>
+      <tr><td></td><td></td><td></td></tr>
+      `;
+
+      return html;
     } catch (error) {
-      return { process, error };
+      throw error;
     }
+  }
+
+  private setControl(data: any) {
+    const { memoryUsageBefore, memoryUsageAfter } = data;
+    return {
+      antes: (memoryUsageBefore.heapUsed / 1000).toFixed(2) + ' kb',
+      despues: (memoryUsageAfter.heapUsed / 1000).toFixed(2) + ' kb',
+    };
   }
 
   private async testTypeOrmRepository(persons: Persona[]) {
@@ -129,7 +138,7 @@ export class AppService {
     const usageBefore = process.memoryUsage();
     const cpuBefore = process.cpuUsage();
     const startTime: any = new Date();
-    await PersonaModel.bulkCreate(persons);
+    await PersonaRepository.bulkCreate(persons);
     const endTime: any = new Date();
     const usageAfter = process.memoryUsage();
     const cpuAfter = process.cpuUsage(cpuBefore);
@@ -215,5 +224,168 @@ export class AppService {
       apellidos[Math.floor(Math.random() * apellidos.length)];
 
     return `${randomNombre} ${randomApellido}`;
+  }
+
+  public async testPersonsWithCars(
+    cantidadPersonas: number,
+    carrosPorPersona: number,
+  ) {
+    try {
+      const dataPersonsWithCar = this.generarDatosAleatorios(
+        cantidadPersonas,
+        carrosPorPersona,
+      );
+      await PersonaModel.bulkCreate(dataPersonsWithCar, {
+        include: [
+          {
+            model: CarroModel,
+            as: 'carros',
+          },
+        ],
+      });
+
+      return await PersonaModel.findAll({
+        include: [
+          {
+            model: CarroModel,
+            as: 'carros',
+          },
+        ],
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async testPersonsWithCarsBad(
+    cantidadPersonas: number,
+    carrosPorPersona: number,
+  ) {
+    try {
+      const dataPersonsWithCar = this.generarDatosAleatorios(
+        cantidadPersonas,
+        carrosPorPersona,
+      );
+
+      const personsData = dataPersonsWithCar.map(
+        ({ nombre, apellido, id_tipo_documento, numero_documento }) => ({
+          nombre,
+          apellido,
+          id_tipo_documento,
+          numero_documento,
+        }),
+      );
+
+      const personsCreated = await PersonaModel.bulkCreate(personsData);
+      const idsPersons = personsCreated.map((persona) => persona.id);
+
+      const carrsData = dataPersonsWithCar.flatMap(({ carros }, index) => {
+        return carros.map(({ placa, modelo, tipoId }) => ({
+          placa,
+          modelo,
+          tipoId,
+          personaId: idsPersons[index],
+        }));
+      });
+
+      await CarroModel.bulkCreate(carrsData);
+
+      return await PersonaModel.findAll({
+        include: [
+          {
+            model: CarroModel,
+            as: 'carros',
+          },
+        ],
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async testPersonsWithCarsBadButBad(
+    cantidadPersonas: number,
+    carrosPorPersona: number,
+  ) {
+    try {
+      const datosAleatorios = this.generarDatosAleatorios(
+        cantidadPersonas,
+        carrosPorPersona,
+      );
+      const personasConCarros = [];
+
+      for (let i = 0; i < cantidadPersonas; i++) {
+        const personaData = datosAleatorios[i];
+
+        const personaCreada = await PersonaModel.create({
+          nombre: personaData.nombre,
+          apellido: personaData.apellido,
+          id_tipo_documento: personaData.id_tipo_documento,
+          numero_documento: personaData.numero_documento,
+        });
+        const personaId = personaCreada.id;
+
+        const carrosData = personaData.carros.map(
+          ({ placa, modelo, tipoId }) => ({
+            placa,
+            modelo,
+            tipoId,
+            personaId,
+          }),
+        );
+
+        await CarroModel.bulkCreate(carrosData);
+        const personaConCarros = await PersonaModel.findByPk(personaId, {
+          include: [
+            {
+              model: CarroModel,
+              as: 'carros',
+            },
+          ],
+        });
+
+        personasConCarros.push(personaConCarros);
+      }
+
+      return personasConCarros;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public generarDatosAleatorios(
+    cantidadPersonas: number,
+    carrosPorPersona: number,
+  ): any[] {
+    const datosGenerados = [];
+
+    for (let i = 0; i < cantidadPersonas; i++) {
+      const persona = {
+        nombre: this.generateRandomName(),
+        apellido: this.generateRandomName(),
+        id_tipo_documento: Math.floor(Math.random() * 5) + 1,
+        numero_documento: (
+          `${i + 1}-` +
+          (
+            Math.floor(Math.random() * (10000000000 - 1000 + 1)) + 1000
+          ).toString()
+        ).toString(),
+        carros: [],
+      };
+
+      for (let j = 0; j < carrosPorPersona; j++) {
+        const carro = {
+          placa: `${i} - ${j}`,
+          modelo: '2000',
+          tipoId: 1,
+        };
+
+        persona.carros.push(carro);
+      }
+
+      datosGenerados.push(persona);
+    }
+
+    return datosGenerados;
   }
 }
